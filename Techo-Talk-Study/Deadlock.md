@@ -1,6 +1,8 @@
 # 교착 상태(Deadlock)
 ![image](https://user-images.githubusercontent.com/60773356/126338390-454c7de0-cc6d-4003-a1fd-ccc32bd323ca.png)
+
 10분 테코톡을 듣고 작성한 글입니다. [영상링크](https://www.youtube.com/watch?v=FXzBRD3CPlQ&ab_channel=%EC%9A%B0%EC%95%84%ED%95%9CTech)
+
 바로 직전 학기에 전공과목인 `운영체제`를 들어서 **교착상태**에 대해 기억이 아주 생생한 상태! 복습한다고 생각하고 들었당.
 
 ## 교착 상태 개념
