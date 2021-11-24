@@ -70,6 +70,158 @@ RequestDto dto = new RequestDto(name, age);
 **이렇게!**
 
 <br>
+
+## `@ModelAttribute` 추가
+어제 위 부분에 대한 궁금증으로 대략 2~3시간 동안 디버거 모드로 찍어보고 `Spring MVC`의 내부 코드를 뜯어보며 분석을 좀 해봤습니다.
+
+뜯다보니 오랜만에 `ArgumentResolver`도 보이고해서 전체적인 개념을 다시 한번 잡을 수 있었는데
+
+제가 알게된 점은 다음과 같습니다.
+
+`@ModelAttribute`를 처리하기 위해서는 `ModelAttributeMethodProcessor`라는 `ArgumentResolver`를 사용합니다.
+
+![image](https://user-images.githubusercontent.com/60773356/143193437-3f49af15-eaff-43f7-911b-21597854450e.png)
+
+크게 역할은 값을 바인딩하는 역할과 값을 검증(`bindingResult`)하는 역할을 합니다.
+
+내부를 살펴보니 가장 핵심 메소드는 `createAttribute`와 `constructAttribute`였습니다.
+
+### createAttribute
+![image](https://user-images.githubusercontent.com/60773356/143194171-67b47eb8-ca8e-48bf-bab0-990846e1d04c.png)
+
+`javaDoc`에 잘 설명이되어 있는데 기본적으로 기본 생성자인 `NoArgsConstructor`를 사용하지만 적절한 생성자가 존재한다면 그것을 통해 객체를 생성합니다.
+
+그 후, setter를 통해 값을 주입하는 방법을 사용하는 것이죠.
+
+### constructAttribute
+![image](https://user-images.githubusercontent.com/60773356/143194733-0f88d591-7fc0-46b0-9db5-1743af1c505d.png)
+
+<details markdown="1">
+<summary>접기/펼치기</summary>
+
+```java
+	protected Object constructAttribute(Constructor<?> ctor, String attributeName, MethodParameter parameter,
+			WebDataBinderFactory binderFactory, NativeWebRequest webRequest) throws Exception {
+
+		if (ctor.getParameterCount() == 0) {
+			// A single default constructor -> clearly a standard JavaBeans arrangement.
+			return BeanUtils.instantiateClass(ctor);
+		}
+
+		// A single data class constructor -> resolve constructor arguments from request parameters.
+		String[] paramNames = BeanUtils.getParameterNames(ctor);
+		Class<?>[] paramTypes = ctor.getParameterTypes();
+		Object[] args = new Object[paramTypes.length];
+		WebDataBinder binder = binderFactory.createBinder(webRequest, null, attributeName);
+		String fieldDefaultPrefix = binder.getFieldDefaultPrefix();
+		String fieldMarkerPrefix = binder.getFieldMarkerPrefix();
+		boolean bindingFailure = false;
+		Set<String> failedParams = new HashSet<>(4);
+
+		for (int i = 0; i < paramNames.length; i++) {
+			String paramName = paramNames[i];
+			Class<?> paramType = paramTypes[i];
+			Object value = webRequest.getParameterValues(paramName);
+
+			// Since WebRequest#getParameter exposes a single-value parameter as an array
+			// with a single element, we unwrap the single value in such cases, analogous
+			// to WebExchangeDataBinder.addBindValue(Map<String, Object>, String, List<?>).
+			if (ObjectUtils.isArray(value) && Array.getLength(value) == 1) {
+				value = Array.get(value, 0);
+			}
+
+			if (value == null) {
+				if (fieldDefaultPrefix != null) {
+					value = webRequest.getParameter(fieldDefaultPrefix + paramName);
+				}
+				if (value == null) {
+					if (fieldMarkerPrefix != null && webRequest.getParameter(fieldMarkerPrefix + paramName) != null) {
+						value = binder.getEmptyValue(paramType);
+					}
+					else {
+						value = resolveConstructorArgument(paramName, paramType, webRequest);
+					}
+				}
+			}
+
+			try {
+				MethodParameter methodParam = new FieldAwareConstructorParameter(ctor, i, paramName);
+				if (value == null && methodParam.isOptional()) {
+					args[i] = (methodParam.getParameterType() == Optional.class ? Optional.empty() : null);
+				}
+				else {
+					args[i] = binder.convertIfNecessary(value, paramType, methodParam);
+				}
+			}
+			catch (TypeMismatchException ex) {
+				ex.initPropertyName(paramName);
+				args[i] = null;
+				failedParams.add(paramName);
+				binder.getBindingResult().recordFieldValue(paramName, paramType, value);
+				binder.getBindingErrorProcessor().processPropertyAccessException(ex, binder.getBindingResult());
+				bindingFailure = true;
+			}
+		}
+
+		if (bindingFailure) {
+			BindingResult result = binder.getBindingResult();
+			for (int i = 0; i < paramNames.length; i++) {
+				String paramName = paramNames[i];
+				if (!failedParams.contains(paramName)) {
+					Object value = args[i];
+					result.recordFieldValue(paramName, paramTypes[i], value);
+					validateValueIfApplicable(binder, parameter, ctor.getDeclaringClass(), paramName, value);
+				}
+			}
+			if (!parameter.isOptional()) {
+				try {
+					Object target = BeanUtils.instantiateClass(ctor, args);
+					throw new BindException(result) {
+						@Override
+						public Object getTarget() {
+							return target;
+						}
+					};
+				}
+				catch (BeanInstantiationException ex) {
+					// swallow and proceed without target instance
+				}
+			}
+			throw new BindException(result);
+		}
+
+		return BeanUtils.instantiateClass(ctor, args);
+	}
+```
+
+</details>
+
+`createAttribute`가 적절한 생성자를 찾고 `constructAttribute`를 통해 해당 생성자로 새로운 객체 인스턴스를 생성하는 구조입니다.
+
+적절한 생성자를 찾기 때문에 매우 다양한 조합이 가능해집니다.
+
+```java
+@Getter
+@Setter
+public class RequestDto() {
+  private String name;
+  private Long age;
+ 
+  public RequestDto(String name) {
+    this.name = name;
+  }
+}
+```
+
+위와 같은 경우에는 `name`을 받는 생성자를 통해 객체를 생성하고 `setAge`를 통해 `age`값을 바인딩할 것입니다.
+
+물론, 위에서 언급했듯이 `AllArgsConstructor`또한 정상적으로 값을 바인딩할 수 있습니다!
+
+#### 결론은 적절한 생성자를 먼저 찾고 그 뒤에 바인딩되지 않은 값을 `setter`를 통해 바인딩해주는 순서로 `@ModelAttribute`는 동작합니다.
+
+
+
+<br>
 <br>
 
 --------
