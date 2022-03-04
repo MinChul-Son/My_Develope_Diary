@@ -240,5 +240,64 @@ props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, io.confluent.kafka.seria
 
 <br>
 
+---
 
 ### Message Ordering
+- `Partition`이 2개 이상인 경우 모든 메시지에 대한 전체 순서 보장이 불가능
+	- `Partition`별로 독립적으로 동작하기 때문
+- `Partition`을 1개로 구성하면 전체 순서 보장은 가능하지만 처리량이 저하
+	- 대부분은 전체 순서 보장보다는 동일한 `Partition`내에서 순서를 보장하는 로직임
+- 동일한 `Key`를 가진 메시지는 동일한 `Partition`에만 전달되어 `Key`레벨의 순서 보장이 가능해짐
+	- 쿠폰 발급을 원하는 메시지는 쿠폰 발급 내에서 순서 보장을 하고, 주문은 주문끼리 순서 보장을 한다는 뜻으로 이해함
+	- 11번가 전체 메시지에 대한 순서보장은 필요없으니까! (맞나?🤔)
+- 운영중에 `Partition`개수가 변경되면 순서 보장이 아예 불가능해짐
+
+<br>
+
+### Cardinality
+- 특정 데이터 집합에서 유니크한 값의 개수
+- `Key Cardinality`는 `Consumer Group`의 개별 `Consumer`가 수행하는 작업의 양에 영향
+	- 특정 `Partition`에만 데이터가 쌓을 수 있음
+- `Key`선택이 잘못되면 작업 부하가 고르지 않게됨
+- `Key`는 `Integer`, `String`과 같이 단순 유형이 아닌 `Json`, `Avro`같은 복잡한 객체일 수 있음
+- **모든 `Partiton`에 `Record`를 고르게 배분하는 `Key`를 만드는 것이 매우 중요함!!**
+
+<br>
+
+### Consumer Failure
+- `Consumer`에 장애가 발생하면 해당 `Consumer`(장애가 발생한)가 `Consume`하고 있던 `Partition`을 `Rebalancing`과정을 통해 다른 `Consumer`가 `Consume`할 수 있게 함
+
+<br>
+<br>
+
+---
+
+## 6. Replication
+
+### Broker에 장애가 발생하면?
+- 해당 `Broker`내의 `Partiton`을 `Producer`와 `Consumer`가 모두 사용할 수 없게되는 문제 발생
+- 다른 `Broker`에서 장애가 발생한 `Partition`을 새로만들면 안되나요?
+	- 내부에 쌓여있던 기존 메시지와 `offset`정보는?
+	- 미리 복제해놓자!
+- **`Replication`은 `Partition`을 미리 다른 `Broker`상에 복제해 장애를 미리 대비하는 기술!!**
+	- 원본이 있는 `Broker` : `Leader`
+	- 복제본이 있는 `Broker` : `Follower`
+	- 이 때 `Producer`는 `Leader`에 `write`하고 `Consumer`는 `Leader`에서 `read`함
+	- `Follower`는 `Leader`의 `Commit Log`에서 데이터를 `Fetch Reqeust`로 복제
+	- `2.4`버전부터 `Follower`의 복제본도 `read`할 수 있는 옵션 추가
+- `Leader`에 장애가 발생하면 `Follower`중에서 새로운 `Leader`를 선출하고 정상적으로 동작
+
+<br>
+
+### Partition Leader에 대한 자동 분산
+- 하나의 `Broker`에만 `Leader`들이 몰려있으면 부하가 집중됨(Hot Spot)
+- 분산을 위한 옵션
+	- `auto.leader.rebalance.enable` :기본값 true
+	- `leader.imbalance.check.interval.seconds`: 기본값 300 sec
+		- 300초마다 불균형을 체크
+
+<br>
+
+### Rack Awareness
+- `Rack`에 분산하여 장애대비
+- 복제본을 `Rack`간의 균형을 유지하며 분산시킴
