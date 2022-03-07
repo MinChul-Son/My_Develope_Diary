@@ -272,6 +272,8 @@ props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, io.confluent.kafka.seria
 
 ---
 
+<br>
+
 ## 6. Replication
 
 ### Broker에 장애가 발생하면?
@@ -301,3 +303,80 @@ props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, io.confluent.kafka.seria
 ### Rack Awareness
 - `Rack`에 분산하여 장애대비
 - 복제본을 `Rack`간의 균형을 유지하며 분산시킴
+
+<br>
+<br>
+
+---
+
+<br>
+
+## 7. In-Sync Replicas
+
+<br>
+
+### In-Sync Replicas(ISR)
+<img width="1213" alt="스크린샷 2022-03-07 오전 11 18 42" src="https://user-images.githubusercontent.com/60773356/156999842-1fa115e7-319b-43d5-8dc1-a0c20e2ca48a.png">
+
+- `Leader` 장애시 새로운 `Leader`를 선출하는데 사용
+- `ISR`은 `High Water Mark`라고 하는 지점까지 동일한 `Replicas`의 목록
+	- `High Water Mark`는 `Follwer`중에서 `Leader`와 가장 비슷하게 복제한 지점
+- `replica.lag.max.messages=4` 옵션으로 원본과 4 이상 차이나는 103은 `OSR`이 됨
+- 원본가 가장 차이가 적은 102가 `ISR`이 되고 이를 기준으로 `High Water Mark`가 되기 때문에 101이 장애가 발생하면 102가 새로운 `Leader`가 됨
+
+<br>
+
+
+### replica.lag.max.messages 사용시 문제점
+- 메시지 유입량이 갑자기 늘어날 경우에 문제가 발생함
+- 메시지가 일정한 비율로 들어오면 지연되는 경우가 없지만 그렇지 않다면 지연으로 판단해 해당 브로커를 `OSR`로 상태를 변경함
+	- 실제로는 정상 동작하고 잠깐 지연으로 인해 이런 문제가 발생하는 것
+	- 불필요한 에러가 발생하고 `retry` 발생
+- 해결책으로 `replica.lag.time.max.ms`로 판단해야함
+	- `Follower`가 `Leader`로 `Fetch`요청을 보내는 `Interval`을 체크!
+	- `replica.lag.time.max.ms=10000`이라면 `10000ms`내에만 요청을 보내면 정상으로 판단
+
+<br>
+
+### ISR은 Leader가 관리
+<img width="1002" alt="스크린샷 2022-03-07 오전 11 47 03" src="https://user-images.githubusercontent.com/60773356/156999870-5292e4a3-e524-4e45-85ec-6b8962c1e7ba.png">
+
+- `ISR`에 대한 정보는 `Leader Broker`가 관리함
+- 즉 지정한 ms이내에 `Follwer`가 `Fetch`하지 않는다면 `ISR`에서 제거하고 `ZooKeeper`에게 알려줌
+- `Controller`는 변경사항에 대해 `ZooKeeper`로부터 수신
+
+<br>
+
+### Controller
+- `Kafka Cluster`내의 `Broker`중 하나가 `Controller`가 됨
+- 수신받은 정보를 다른 `Broker`에게 전달하는 역할
+	- 해싱처리를 통해 속도를 높이기 위함
+- `Leader`가 장애시에 새로운 리더를 선출하는 역할을 수행함
+- 만약 `Controller`가 장애가 발생하면?
+	- 다른 `Active Broker`들 중에서 재선출
+
+<br>
+
+### Committed
+- `ISR`목록의 모든 `Replicas`가 메시지를 받으면 `Committed`!!
+- `OSR`로 판단된 것은 신경 쓰지 않음
+- `Consumer`는 `Committed`된 메시지만 읽을 수 있음
+- `Leader`는 메시지를 `Commit`할 시기를 결정
+- 이를 통해 모든 `Follower`가 동일한 `Offset`을 갖도록 보장
+	- `OSR`도 언젠가는 따라잡음
+
+<br>
+
+### Replicas 동기화
+- `Leader Epoch`
+	- 새로운 `Leader`가 선출된 시점을 `Offset`으로 표시
+
+<br>
+
+### Message Commit 과정
+- 모든 `Broker`는 `Fetcher Thread`가 존재함
+
+1. `Producer`가 `Leader`에게 새로운 메시지 추가
+2. 각 `Follwer`의 `Fetcher Thread`가 독립적으로 `Fetch`를 수행하고 읽어온 메시지를 자신의 `Partition`에 추가
+3. 다시 한번 `Fetch`를 수행하는데 만약 `null`을 받는다면 더 이상 읽어올 데이터가 없다는 뜻이기 때문에(동기화가 완료되었다는 뜻) `Leader`는 `High Water Mark`를 이동시킴 
+4. 다시 `Fetch`를 수행하고 `Follwer`들도 `High Water Mark`를 받아 이동시킴
