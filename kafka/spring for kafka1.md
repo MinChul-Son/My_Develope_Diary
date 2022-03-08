@@ -6,7 +6,7 @@
 ### 카프카 실행
 - brew services start zookeeper
 - brew services start kafka
-- 기본적으로 카프카는 9092, 주키퍼는 2021포트를 사용함
+- 기본적으로 카프카는 9092, 주키퍼는 2181포트를 사용함
 
 <br>
 
