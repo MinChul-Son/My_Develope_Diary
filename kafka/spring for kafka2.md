@@ -122,6 +122,19 @@
 - `KafkaListenerEndpointRegister`에 등록해 사용 가능
 -  `LocalValidatorFactoryBean`을 사용하면  `javax.validation`에 정의된 유효성 검증을 할 수 있음
 
+![image](https://user-images.githubusercontent.com/60773356/158720701-82e77f31-5a9b-4e76-851e-308cecac54f6.png)
+
+javax validation annotation을 필드에 붙여주고,
+
+
+![image](https://user-images.githubusercontent.com/60773356/158720712-c1f995a9-cb40-417a-bd81-dd08edb174f0.png)
+
+Consumer에서 `@Valid`를 객체 앞에 붙여주어 검증을 할 수 있다.
+
+![image](https://user-images.githubusercontent.com/60773356/158720722-4ea4b189-99ce-4316-ba53-ead4294e625f.png)
+
+이 때, 주의할 점은 위와 같이 검증기를 등록시켜주어야 한다는 것!(만들어져있는 기본 검증기로 대부분 검증 가능함)
+
 <br>
 
 ### Retrying Deliveries
