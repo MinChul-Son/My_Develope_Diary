@@ -111,3 +111,79 @@
 
 - `ChunkContext`를 사용해 `JobParamter`를 꺼내올 수 있음
 - `StepContribution`과 같은 참조를 통해 꺼내올 수도 있고 `StepContext`에서 바로 `Map`을 꺼내올 수도 있음
+
+
+---
+
+## JobExecution
+- `JobInstance`에 대한 한번의 시도를 의미하는 객체로 `Job` 실행 중에 발생한 정보를 저장하는 객체
+- `FAILED`나 `COMPLETED`등의 실행 결과 상태를 가지고 있음
+	- `COMPLETED`라면 실행 완료로 판단해 재실행 풀가
+	- `FAILED`라면 실행이 완료되지 않은 것으로 판단해 재실행 가능
+		- 이 때는 `JobParameter`가 동일하더라도 계속 실행 가능
+		- 즉, `COMPLETED`가 될 때까지 하나의 `JobInstance`내에서 여러번의 시도가 가능함
+- `JobInstance`와 1:N 관계
+
+![스크린샷 2022-04-06 오후 5 22 44](https://user-images.githubusercontent.com/60773356/162413924-79e1ab18-2734-4aca-ba51-aeb8ff259253.png)
+
+
+---
+
+## Step
+- `Batch Job`을 구성하는 독립적인 하나의 단계, 실제 배치를 처리를 정의하고 컨트롤하는데 필요한 모든 정보를 가지고 있는 객체
+- 입출력과 처리와 관련된 복잡한 비즈니스 로직 등 모든 설정을 담고 있음
+- 배치 작업을 어떻게 구성하고 실행할 것인지 `Job`의 세부작업을 명세한 객체
+- 기본 구현체
+	- `TaskletStep`
+		- 가장 기본이 되는 클래스, `Tasklet`타입의 구현체 제어
+	- `PartitionStep`
+		- 멀티 스레드 방식으로 `step`을 분리해 실행
+	- `JobStep`
+		- `Step`내에서 `Job`을 실행
+	- `FlowStep`
+		- `Step`내에서 `Flow`를 실행
+
+![스크린샷 2022-04-07 오후 10 17 41](https://user-images.githubusercontent.com/60773356/162413952-90e2fbda-238c-4d0e-89eb-5e181b4f64a3.png)
+
+
+
+---
+
+## StepExecution
+- `Step`에 대한 한번의 시도를 의미하는 객체, `Step` 실행 중 발생한 정보를 저장하는 객체
+- 매번 시도될 때마다 생성되고 각 `Step`별로 생성
+- `Job`이 재시작할 때 이미 성공한 `Step`은 실행되지 않고 실패한 것만 실행
+- `Step`의 `StepExecution`이 모두 성공해야 `JobExecution`이 정상 완료
+- `Step`의 `Execution`중 하나라도 실패하면 `JobExecution`은 실패
+- `JobExecution`과 1:N 관계
+
+![스크린샷 2022-04-07 오후 11 02 51](https://user-images.githubusercontent.com/60773356/162413981-165c5744-5948-44ee-97f6-438762e9bcb5.png)
+
+
+---
+
+## StepContribution
+- `Chunk` 프로세스의 변경 사항을 버퍼링한 후 `StepExecution` 상태를 업데이트하는 도메인 객체
+- `Chunk Commit`직전에 `StepExecution`의 `apply` 메서드를 호출해 상태 업데이트
+- `ExitStatus`의 기본 종료 코드외 커스텀하게 종료 코드 생성가능
+
+![스크린샷 2022-04-07 오후 11 15 02](https://user-images.githubusercontent.com/60773356/162413996-088b8cab-df90-4019-8379-b658588ff469.png)
+
+![스크린샷 2022-04-07 오후 11 19 08](https://user-images.githubusercontent.com/60773356/162414009-af2e1c4c-58fa-4021-ba37-3068e9771af2.png)
+
+- `Chunk`기반의 프로세스를 처리하는 시점에 생성된다.
+- 생성 -> `execute()` -> `apply()`
+
+
+---
+
+## ExecutionContext
+- `Framework`에서 유지 및 관리하는 `key-value`로 구성된 `Collection`
+- `StepExecution`, `JobExecution` 객체의 상태를 저장하는 공유 객체
+- 직렬화된 값으로 데이터베이스에 저장
+- 공유 범위
+	- `Step` 범위: 각 `Step`의 `StepExecution`에 저장되고 `Step`간 공유 x
+	- `Job` 범위: 각 `Job`의 `JobExecution`에 저장되며 `Job`간 서로 공유 x, 같은 `Job` 내부의 `Step`간 서로 공유 o
+
+![스크린샷 2022-04-08 오후 3 48 05](https://user-images.githubusercontent.com/60773356/162414026-87f8771d-0da3-4d32-a808-78de479ddb7b.png)
+
