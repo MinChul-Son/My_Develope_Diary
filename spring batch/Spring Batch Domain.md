@@ -187,3 +187,54 @@
 
 ![스크린샷 2022-04-08 오후 3 48 05](https://user-images.githubusercontent.com/60773356/162414026-87f8771d-0da3-4d32-a808-78de479ddb7b.png)
 
+---
+
+## JobRepository
+- 배치 작업 중의 정보를 저장하는 저장소
+- `Job`의 시작시간, 종료시간, 실행 횟수, 결과 등 모든 `meta data`를 저장
+	- `JobLauncher`, `Job`, `Step` 구현체 내부에서 `CRUD` 기능을 처리
+
+![스크린샷 2022-04-10 오후 4 58 42](https://user-images.githubusercontent.com/60773356/162613464-ab4ff35b-27e6-43e2-adb9-2fcf487e7e77.png)
+
+
+### JobRepository 설정
+- `@EnableBatchProcessing`만 선언하면 `JobRepository`가 스프링 빈으로 자동 등록
+- `BatchConfigurer`,를 구현하거나  `BasicBatchConfigurer`를 상속해 설정을 커스터마이징 가능
+	- `JobRepositoryFactoryBean`: `JDBC` 방식
+	- `MapJobRepositoryFactoryBean`: `In Memory` 방식
+
+
+### JobExecutionListener
+![스크린샷 2022-04-10 오후 6 29 52](https://user-images.githubusercontent.com/60773356/162613469-429abf63-0698-4633-96b2-2ac08bbc5242.png)
+
+- `JobExecutionListener`를 구현한 클래스를 만들어 `Listener`를 만든다.
+- `beforeJob`과 `afterJob` 메서드를 오버라이딩하여 필요한 작업을 수행할 수 있음
+- 파라미터로 주어지는 `JobExecution`을 통해 가져온 `Job`의 이름과 실행시점에 주어진 `JobParameter`를 통해 `JobRepository`에서 마지막으로 수행된 `JobExecution`을 꺼낼 수 있음
+
+![스크린샷 2022-04-10 오후 6 33 09](https://user-images.githubusercontent.com/60773356/162613471-c2e2fdfa-eb18-431b-8f32-f5a83d29c4a2.png)
+
+- 위에서 만든 `Listener`를 `Job`에 등록
+
+
+![스크린샷 2022-04-10 오후 6 34 42](https://user-images.githubusercontent.com/60773356/162613480-1574fac8-8513-475f-9432-a3f2af7b459f.png)
+
+- `ExecutionListener`를 통해 배치 정보들이 로그로 출력됨
+
+
+![스크린샷 2022-04-10 오후 6 39 07](https://user-images.githubusercontent.com/60773356/162613482-a0806f5f-c073-4963-8feb-d33faebbf677.png)
+
+- `JobRepository`에 제공되는 메서드가 있으니 상황에 맞게 사용하자
+
+
+### BasicBatchConfigurer
+![스크린샷 2022-04-10 오후 6 49 16](https://user-images.githubusercontent.com/60773356/162613497-aec098a2-710f-4ae7-b51e-689811b05de2.png)
+
+- `BasicBatchConfigurer`를 상속하여 커스텀하게 설정할 수 있음
+- 격리레벨, 테이블 prefix, 트랜잭션 매니저 등등
+- 이 때, 테이블 prefix를 변경하려면 자동으로 생성된 테이블 `BATCH_XXX`의 prefix를 모두 원하는 prefix로 미리 변경해주거나 별도로 생성해주어야 함
+	- 그렇지 않으면 해당 테이블이 존재하지 않는다는 오류 발생
+
+
+![스크린샷 2022-04-10 오후 6 46 04](https://user-images.githubusercontent.com/60773356/162613490-4f55feb4-7fcc-42ea-b2f7-c93ad139e214.png)
+
+- `JDBC` 방식으로 동작하기 때문에 주어지는 `setXXX` 메서드를 통해 값을 원하는대로 설정이 가능
