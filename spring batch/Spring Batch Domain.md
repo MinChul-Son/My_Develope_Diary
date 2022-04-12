@@ -238,3 +238,39 @@
 ![스크린샷 2022-04-10 오후 6 46 04](https://user-images.githubusercontent.com/60773356/162613490-4f55feb4-7fcc-42ea-b2f7-c93ad139e214.png)
 
 - `JDBC` 방식으로 동작하기 때문에 주어지는 `setXXX` 메서드를 통해 값을 원하는대로 설정이 가능
+
+
+---
+
+## JobLauncher
+- `Job`을 실행시키는 역할
+- `Job`과 `JobParameter`를 인자로 받아 요청된 작업을 수행 후 `JobExecution` 반환
+- `Spring Boot` 사용시 `JobLauncher`가 스프링 빈으로 자동 등록
+
+
+### 동기적 실행
+![스크린샷 2022-04-10 오후 7 09 20](https://user-images.githubusercontent.com/60773356/162913487-9e4449de-dc11-4698-969b-0f055bace7f3.png)
+
+- 스케줄러에 의한 배치처리에 적합
+	- 처리 시간이 길어도 상관없는 경우
+
+### 비동기적 실행
+![스크린샷 2022-04-10 오후 7 09 28](https://user-images.githubusercontent.com/60773356/162913495-bde9d423-f422-40c8-a0e9-a64131bb2f5c.png)
+
+- `JobLauncher` 실행과 동시에 `JobExecution`을 반환하는데 상태코드는 `UNKNOWN`임 -> 성공했는지 실패했는지 모름
+- `Job`이 실행된 이후에 최종적인 상태코드가 반환됨 
+- `HTTP Request`에 의한 배치 처리에 적합
+
+![스크린샷 2022-04-10 오후 7 34 17](https://user-images.githubusercontent.com/60773356/162913516-7d2babd1-652b-42b4-9785-53c10ede3f96.png)
+
+- `SimpleJobLauncher`를 보면 알 수 있듯이 기본 동작은 동기적 방식으로 동작함
+- 비동기적 실행을 위해서는 `tastExecutor`를 변경해줘야함
+
+![스크린샷 2022-04-10 오후 7 37 28](https://user-images.githubusercontent.com/60773356/162913531-6190739d-e4e3-447d-b59f-f93065156508.png)
+
+
+- `BasicBatchConfigurer`를 주입받아 `getJobLauncher`를 통해 `JobLauncher`를 가져온다.
+- `SimpleJobLauncher`는 스프링 빈으로 등록되지 않고 `JobLauncher` 인터페이스가 스프링 빈으로 등록되기 때문에 `SimpleJobLauncher`를 바로 꺼낼 수 없고 위와 같이 캐스팅해줘야함
+	- `SimpleJobLauncher`는 프록시 객체가 등록됨
+- `SimpleJobLauncher`의 `TaskExecutor`를 비동기로 변경하면 비동기적으로 배치가 실행된다.
+
