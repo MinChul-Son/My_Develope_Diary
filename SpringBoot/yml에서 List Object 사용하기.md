@@ -2,7 +2,7 @@
 
 로컬환경, 개발환경, 상용환경으로 환경을 분리할 때, `yml`에 변수를 넣어두고 코드에서 불러와 사용하는 방법을 흔히 사용하곤 한다.
 
-```
+```yml
 person:
   name: '민철'
 ```
@@ -19,7 +19,7 @@ private String name;
 
 추가적으로 `yml`은 `List`나 `Map`과 같은 다양한 데이터 유형을 지원하고 있다.
 
-```
+```yml
 programming:
   language:
     - C
