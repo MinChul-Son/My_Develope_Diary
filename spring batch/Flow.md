@@ -45,3 +45,26 @@
 
 `on()`을 사용하지 않고 `start`, `next`를 사용해서 `Job`을 구성하면 내부 `Step`이 하나라도 실패하면 전체 `Job`이 실패한다.
 
+<br>
+
+---
+
+## SimpleFlow
+- `Spring Batch`가 제공하는 `Flow` 구현체
+- `Step`, `Flow`, `JobExecutionDecider`를 담고 있는 `State`를 실행시킴
+	- `State`는 `SimpleFlow`가 가지고 있는 속성
+- `FlowBuilder`를 통해 생성, `Transition`과 조합해 여러 `Flow` 또는 중첩 `Flow`로 `Job`을 구성할 수 있음
+
+<br>
+
+
+### State
+-  `Step`, `Flow`, `JobExecutionDecider`를 저장하고 있는 객체
+- `Flow`를 구성하면 내부적으로 생성되고 `Transition`과 연동
+- 내부 `handle()` 메서드를 실행하고 `FlowExecutionStatus`를 반환
+	- 마지막 실행상태가 `FlowJob`의 최종 상태
+	- `on()` 메서드로 넘어온 패턴과 매칭여부를 판단함
+	- `SimpleFlow`가 `State`를 실행시켜 `Step`이나 `Flow`를 실행시키는 것
+- `SimpleFlow`는 `StateMap`에 저장된 모든 `State`의 `handle()`메서드를 통해 모든 `Step`이 실행되도록 함
+	- 이 때 호출되는 `State`가 어떤 타입인지 알지 못함 -> 상태 패턴
+	- 상태값만 얻어옴
