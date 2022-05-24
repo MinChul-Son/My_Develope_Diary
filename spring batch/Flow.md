@@ -68,3 +68,10 @@
 - `SimpleFlow`는 `StateMap`에 저장된 모든 `State`의 `handle()`메서드를 통해 모든 `Step`이 실행되도록 함
 	- 이 때 호출되는 `State`가 어떤 타입인지 알지 못함 -> 상태 패턴
 	- 상태값만 얻어옴
+
+<br>
+
+## FlowStep
+- `Step`내에 `Flow`를 할당해 실행시키는 도메인 객체
+- `Flow`의 최종 상태값에 따라 `FlowStep`의 `BatchStatus`와 `ExitStatus`가 결정
+- `StepBuilder`하위의 `FlowStepBuilder`로부터 생성
