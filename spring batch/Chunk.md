@@ -58,3 +58,11 @@
 - `ItemStream`을 구현하지 않음
 - 대부분 커스터마이징을 하여 사용하므로 기본 구현체가 적음
 
+<br>
+
+## ItemStream
+- `ItemReader`와 `ItemWriter`의 처리 과정 중 상태를 저장하고 오류가 발생하면 해당 상태를 참조하여 실패한 지점에서 재시작을 지원함
+- `ItemReader`, `ItemWriter`는 `ItemStream`을 구현해야함
+- `ExecutionContext`와 연계해서 사용가능
+- 리소스를 열고 닫는 `open()`, `close()` 메서드와 상태를 저장하는 `update()`메서드가 존재
+	- `chunk size`만큼 읽어오고 `update()`호출
