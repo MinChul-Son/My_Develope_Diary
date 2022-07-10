@@ -41,3 +41,28 @@
 - 한 라인을 설정한 고정길이 기준으로 나누어 토큰화하는 방식을 사용
 - 범위를 문자열 형식으로 지정
 	- `"1~4"`
+
+<br>
+
+### Exception Handling
+- 라인을 읽거나 토큰화할 때 발생하는 `Parsing` 예외를 처리할 수 있는 예외 계층 제공
+- 토큰화 검증을 적용하지 않도록 설정하면 `Parsing` 예외가 발생하지 않도록 할 수 있음
+	- `strict` 옵션
+- 예외 종류
+	- `ItemReaderException`
+		- `FlatFileParseException`: 파일을 읽어들이는 동안 발생한 예외
+	- `FlatFileFormatException`: 토큰화하는 중 발생하는 예외
+		- `IncorrectTokenCountException`: 컬럼 개수와 실제 토큰화한 컬럼수가 다를 때 발생하는 예외
+		- `IncorrectLineLengthException`: 토큰화할 때 라인 전체 길이와 컬럼 길이의 총합이 일치하지 않을 때 발생하는 예외
+
+<br>
+
+---
+
+<br>
+
+## JsonItemReader
+- `Json` 데이터의 `Parsing` 및 `Binding`을 `JsonObjectReader` 구현처에 위임해 처리하는 `ItemReader`
+	- `JacksonJsonObjectReader`, `GsonJsonObjectReader` 구현체 제공
+
+
