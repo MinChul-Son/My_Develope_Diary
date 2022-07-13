@@ -104,3 +104,34 @@
 	- `read()`메서드를 동시에 호출해서 가져올 수 있기 때문
 - `fetchSize`는 `chunkSize`와 동일하게 하는 것이 좋음
 	- `chunkSize`만큼 커밋이 되기 때문
+
+<br>
+
+
+### JpaCursorItemReader
+- `Spring Batch 4.3`부터 지원
+- `Cursor`기반의 `JPA` 구현체
+- `EntityManagerFactory`객체가 필요하고 `JPQL`을 사용함
+- `JdbcCursorItemReader`는 `DB`에서 하나씩 꺼내와서 매핑을 하지만 `JpaCursorItemReader`는 `ItemStream`으로 부터 `ResultStream`의 형태로 데이터를 모두 꺼내온 후에 반복문을 돌며 하나씩 매핑함
+- 파라미터에는 `Map`형태로 넣어줌
+
+<br>
+
+
+### JdbcPagingItemReader
+- `Paging`기반의 `JDBC` 구현체
+- `offset`(시작행 번호), `limit`(반환할 행 수)를 지정
+	- `Spring Batch`가 `PageSize`에 맞게 자동 생성해줌
+- 페이징 단위로 새로운 쿼리 실행
+	- 데이터의 순서보장을 위해 `order by`를 작성해줘야함
+- `Thread-Safe`
+- `PagingQueryProvider`가 `DB`에 따라 적절한 `Provider`를 선택해 쿼리문을 `ItemReader`에게 제공해줌
+	- `select`, `from`, `sortKey`는 필수 속성
+	- `where`, `group by`는 비필수
+
+<br>
+
+
+### JpaPagingItemReader
+- `Paging`기반의 `Jpa` 구현체 
+- `EntityManagerFactory`객체가 필요하고 `JPQL`을 사용함
