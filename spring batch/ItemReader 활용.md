@@ -135,3 +135,11 @@
 ### JpaPagingItemReader
 - `Paging`기반의 `Jpa` 구현체 
 - `EntityManagerFactory`객체가 필요하고 `JPQL`을 사용함
+
+<br>
+
+### ItemReaderAdapter
+- `ItemReader`내부에서 이미 존재하는 다른 서비스를 사용하고할 때 사용하는 클래스로 위임역할을 함
+	- `ItemReader` -> `ItemReaderAdapter` -> `SomethingService.doSomething()`
+- `targetObject`와 `targetMethod`를 전달해야함
+	- 내부적으로 리플렉션 사용함
