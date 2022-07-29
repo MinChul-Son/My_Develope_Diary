@@ -16,3 +16,40 @@
 
 ### FormatterLineAggregator
 - 객체의 필드를 사용자가 설정한 `Formatter` 구문을 사용해 문자열로 변환
+
+---
+
+<br>
+
+## JsonFileItemWriter
+- 객체를 받아 `Json String`으로 변환
+
+
+---
+
+<br>
+
+## JdbcBatchItemWriter
+- `datasource`를 지정, `sql`속성에 쿼리 설정해야함
+- `JDBC`의 `Batch`기능을 사용해 `bulk`방식의 처리
+- 일괄처리이므로 성능상 이점이 존재함
+
+
+---
+
+<br>
+
+## JpaItemWriter
+- `Jpa Entity` 기반으로 데이터를 처리
+	- `EntityManagerFactory`를 주입받아 사용
+- `Entity`를 `chunk` 크기만큼 `insert`, `merge`한다음 `flush`
+- `ItemReader`, `ItemProcessor`로부터 아이템을 전달받을 때는 `Entity` 타입으로 받아야함
+
+
+---
+
+<br>
+
+## ItemWriterAdapter
+- `Job`안에서 이미 있는 서비스를 `ItemWriter`에서 사용하고자할 때 위임 역할을 함
+
